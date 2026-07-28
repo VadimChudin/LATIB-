@@ -1,0 +1,13 @@
+
+# Node.js
+node_modules/
+package-lock.json
+# Electron / бинарники
+*.exe
+dist/
+build/
+
+
+.env
+.env.local
+

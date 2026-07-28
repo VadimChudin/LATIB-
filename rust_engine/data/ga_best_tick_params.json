@@ -1,0 +1,23 @@
+{
+  "fitness": 79.06391438757058,
+  "params": {
+    "be_trigger_pct": 0.009109223618310739,
+    "max_speed_mult": 2.562383422258681,
+    "micro_window_ms": 50.0,
+    "min_drop_pct": 0.001,
+    "min_micro_delta_mult": -2.0,
+    "min_size_mult": 0.5259925179646292,
+    "sl_pct": 0.0028860855783707593,
+    "tp_pct": 0.05,
+    "trail_pct": 0.0038371062093752817,
+    "unused": 0.6536851507731843,
+    "window_ms": 8077.62242712159
+  },
+  "strategy": "knife_tick",
+  "test_pnl_r": 37.85548637055121,
+  "test_trades": 151,
+  "test_wr": 39.0728476821192,
+  "train_pnl_r": 79.06391438757058,
+  "train_trades": 211,
+  "train_wr": 47.867298578199055
+}

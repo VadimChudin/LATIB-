@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="mocha">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Aegis Widget</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,200;14..32,300;14..32,400;14..32,500;14..32,600&family=JetBrains+Mono:wght@300;400&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        :root {
+            --sans: 'Inter', system-ui, sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+            --g-op: 0.52;
+            --bg-rgb: 30 28 26;
+            --g-bg: rgb(var(--bg-rgb) / var(--g-op));
+            --g-border: rgba(255, 255, 255, 0.12);
+            --g-shine: rgba(255, 255, 255, 0.08);
+            --g-blur: blur(18px) saturate(120%);
+            --accent: #a3c2a3;
+            --blue: #a3c2e0;
+            --green: #8fd1a1;
+            --red: #e09696;
+            --amber: #e0be7e;
+            --text: rgba(255, 255, 255, 0.96);
+            --muted: rgba(255, 255, 255, 0.55);
+            --r: 14px;
+        }
+
+        [data-theme="pearl"],
+        [data-theme="sand"] {
+            --g-border: rgba(0, 0, 0, 0.20);
+            --g-shine: rgba(255, 255, 255, 0.40);
+            --text: #0a0a0a;
+            --muted: #4e4e4e;
+            --accent: #2e5c36;
+            --blue: #2a4e70;
+            --green: #256b35;
+            --red: #8a3030;
+            --amber: #755a20;
+        }
+
+        [data-theme="pearl"] {
+            --bg-rgb: 245 242 238;
+        }
+
+        [data-theme="sand"] {
+            --bg-rgb: 210 195 175;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            font-family: var(--sans);
+            font-size: 12px;
+            color: var(--text);
+            user-select: none;
+            -webkit-app-region: no-drag;
+            overflow: hidden;
+        }
+
+        #app {
+            width: 100%;
+            height: 100%;
+            background: var(--g-bg);
+            border: 1px solid var(--g-border);
+            border-radius: var(--r);
+            backdrop-filter: var(--g-blur);
+            -webkit-backdrop-filter: var(--g-blur);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, .38);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Shine top line */
+        #app::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 10%;
+            right: 10%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .12), transparent);
+            pointer-events: none;
+        }
+
+        /* Title bar */
+        #title {
+            height: 34px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            padding: 0 11px;
+            gap: 8px;
+            border-bottom: 1px solid var(--g-border);
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+            color: var(--muted);
+            -webkit-app-region: drag;
+            cursor: grab;
+        }
+
+        #title:active {
+            cursor: grabbing;
+        }
+
+        .close-btn {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff5f57;
+            border: none;
+            cursor: pointer;
+            -webkit-app-region: no-drag;
+            margin-left: auto;
+            flex-shrink: 0;
+            box-shadow: 0 0 4px rgba(255, 95, 87, .4);
+        }
+
+        .close-btn:hover {
+            filter: brightness(1.2);
+        }
+
+        /* Body */
+        #body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        #body::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        #body::-webkit-scrollbar-thumb {
+            background: var(--g-border);
+            border-radius: 4px;
+        }
+
+        /* Cards */
+        .card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--g-border);
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+
+        .lbl {
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: .09em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        /* Portfolio */
+        .big-num {
+            font-family: var(--mono);
+            font-size: 24px;
+            font-weight: 200;
+            letter-spacing: -.03em;
+        }
+
+        .delta {
+            font-size: 11px;
+            color: var(--green);
+            margin-top: 4px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--g-border);
+            border-radius: 9px;
+            padding: 7px 8px;
+            text-align: center;
+        }
+
+        .sv {
+            font-size: 13px;
+            font-weight: 500;
+            font-family: var(--mono);
+        }
+
+        .sl {
+            font-size: 8.5px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            margin-top: 2px;
+        }
+
+        /* Positions */
+        .pos-item {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--g-border);
+            border-radius: 9px;
+            padding: 8px 10px;
+            margin-bottom: 4px;
+        }
+
+        .pos-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+        }
+
+        .pos-sym {
+            font-weight: 600;
+            font-size: 11.5px;
+        }
+
+        .pos-pnl {
+            font-family: var(--mono);
+            font-size: 11px;
+        }
+
+        .pos-bar {
+            height: 2px;
+            background: var(--g-border);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .pos-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 1px 7px;
+            border-radius: 100px;
+            font-size: 9px;
+            font-weight: 500;
+            margin-left: 5px;
+        }
+
+        .badge-g {
+            background: rgba(124, 174, 136, .18);
+            color: var(--green);
+            border: 1px solid rgba(124, 174, 136, .25);
+        }
+
+        .badge-r {
+            background: rgba(196, 128, 128, .18);
+            color: var(--red);
+            border: 1px solid rgba(196, 128, 128, .25);
+        }
+
+        /* Logs */
+        #lf {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow-y: auto;
+            flex: 1;
+            max-height: 220px;
+        }
+
+        .lr {
+            display: flex;
+            gap: 8px;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .lt {
+            color: var(--muted);
+            flex-shrink: 0;
+            min-width: 58px;
+        }
+
+        .li {
+            flex: 1;
+            word-break: break-all;
+        }
+
+        .li-g {
+            color: var(--green);
+        }
+
+        .li-r {
+            color: var(--red);
+        }
+
+        .li-b {
+            color: var(--blue);
+        }
+
+        .li-s {
+            color: var(--muted);
+        }
+
+        .empty {
+            font-size: 11px;
+            color: var(--muted);
+            text-align: center;
+            padding: 16px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div id="title">
+            <span id="icon"></span>&nbsp;<span id="label">—</span>
+            <button class="close-btn" onclick="closeMe()" title="Close"></button>
+        </div>
+        <div id="body">
+            <div id="content"></div>
+        </div>
+    </div>
+
+    <script>
+        const TYPE = window.widget?.getType() || new URLSearchParams(location.search).get('type') || 'portfolio';
+
+        // Apply saved theme and opacity
+        const theme = localStorage.getItem('aegis-theme') || 'mocha';
+        document.documentElement.setAttribute('data-theme', theme);
+        const op = localStorage.getItem('aegis-opacity') || '0.52';
+        document.documentElement.style.setProperty('--g-op', op);
+
+        // Set icon/label
+        const META = {
+            portfolio: { icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>', label: 'Portfolio & Balance' },
+            positions: { icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>', label: 'Live Positions' },
+            logs: { icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>', label: 'Aegis Core Logs' },
+            journal: { icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>', label: 'Trade Journal' },
+            analytics: { icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>', label: 'Tier-1 Analytics' },
+            aivision: { icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>', label: 'AI Vision Introspection' },
+            scanner: { icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>', label: 'Microstructure Scanner' }
+        };
+        document.getElementById('icon').innerHTML = META[TYPE]?.icon || '◻';
+        document.getElementById('label').textContent = META[TYPE]?.label || TYPE;
+
+        function closeMe() {
+            if (window.widget) window.widget.close();
+            else window.close();
+        }
+
+        /* ── Portfolio rendering ─────────────────────────────────────── */
+        function renderPortfolio(data) {
+            const d = data || {};
+            document.getElementById('content').innerHTML = `
+      <div class="card">
+        <div class="lbl">Balance</div>
+        <div class="big-num" id="pf-bal">${d.balance || '$12,847'}</div>
+        <div class="delta" id="pf-delta">${d.delta || '+$342.18 · +2.74%'}</div>
+        <div class="stat-grid">
+          <div class="stat-box"><div class="sv" style="color:var(--green)" id="pf-wr">${d.wr || '62.3%'}</div><div class="sl">Win Rate</div></div>
+          <div class="stat-box"><div class="sv" style="color:var(--blue)" id="pf-pf">${d.pf || '1.38'}</div><div class="sl">Profit F</div></div>
+          <div class="stat-box"><div class="sv" id="pf-tc">${d.trades || '24'}</div><div class="sl">Trades</div></div>
+        </div>
+      </div>`;
+        }
+
+        /* ── Positions rendering ─────────────────────────────────────── */
+        function renderPositions(positions) {
+            const c = document.getElementById('content');
+            if (!positions || positions.length === 0) {
+                c.innerHTML = '<div class="empty">No active positions</div>';
+                return;
+            }
+            c.innerHTML = '';
+            positions.forEach(p => {
+                const isL = p.side === 'LONG';
+                const sign = p.unrealizedPnl >= 0 ? '+' : '';
+                const col = p.unrealizedPnl >= 0 ? 'var(--green)' : 'var(--red)';
+                const bw = Math.min(100, Math.max(5, Math.abs(p.pnlPct) * 20));
+                const bg = isL ? 'linear-gradient(90deg,#22c55e,#84cc16)' : 'linear-gradient(90deg,#ef4444,#f97316)';
+                c.insertAdjacentHTML('beforeend', `
+          <div class="pos-item">
+            <div class="pos-top">
+              <div><span class="pos-sym">${p.symbol}</span>
+                <span class="badge ${isL ? 'badge-g' : 'badge-r'}">${p.side}</span>
+                <div style="font-size:9.5px;color:var(--muted);margin-top:3px">Entry $${parseFloat(p.entryPrice).toFixed(2)}</div>
+              </div>
+              <div style="text-align:right">
+                <div class="pos-pnl" style="color:${col}">${sign}$${p.unrealizedPnl.toFixed(2)}</div>
+                <div style="font-size:9.5px;color:var(--muted)">${sign}${p.pnlPct.toFixed(2)}%</div>
+              </div>
+            </div>
+            <div class="pos-bar"><div class="pos-fill" style="width:${bw}%;background:${bg}"></div></div>
+          </div>`);
+            });
+        }
+
+        /* ── Logs ────────────────────────────────────────────────────── */
+        function initLogs() {
+            document.getElementById('content').innerHTML = '<div id="lf"><div class="lr"><span class="lt">SYSTEM</span><span class="li">Waiting for Engine boot...</span></div></div>';
+        }
+        function addLog(type, msg) {
+            const lf = document.getElementById('lf');
+            if (!lf) return;
+            const ts = new Date().toISOString().slice(11, 19);
+            const cls = { g: 'li-g', r: 'li-r', b: 'li-b', s: 'li-s' }[type] || '';
+            const row = document.createElement('div');
+            row.className = 'lr';
+            row.innerHTML = `<span class="lt">${ts}</span><span class="li ${cls}">${msg}</span>`;
+            lf.appendChild(row);
+            lf.scrollTop = lf.scrollHeight;
+            if (lf.children.length > 500) lf.removeChild(lf.children[0]);
+        }
+
+        /* ── Init by type ────────────────────────────────────────────── */
+        if (TYPE === 'portfolio') renderPortfolio(null);
+        else if (TYPE === 'positions') { document.getElementById('content').innerHTML = '<div class="empty">No active positions</div>'; }
+        else if (TYPE === 'logs') initLogs();
+        else if (TYPE === 'journal') { document.getElementById('content').innerHTML = '<div id="jf" style="display:flex;flex-direction:column;gap:4px;overflow-y:auto;max-height:360px"><div class="empty">Loading journal...</div></div>'; }
+        else if (TYPE === 'analytics') {
+            document.getElementById('content').outerHTML = `
+            <div id="content" style="flex:1;display:flex;flex-direction:column;min-height:220px">
+                <div class="card" style="flex:1;display:flex;flex-direction:column;padding:12px;overflow:hidden">
+                    <div class="pos-top">
+                        <div><span class="pos-sym" style="font-size:14px">Performance</span></div>
+                        <div style="text-align:right">
+                            <div class="pos-pnl" style="color:var(--green);font-size:14px">+$3,445.80</div>
+                            <div style="font-size:9.5px;color:var(--muted)">+27.4% All Time</div>
+                        </div>
+                    </div>
+                    <canvas id="eqChart" style="flex:1;width:100%;min-height:80px;margin-top:10px"></canvas>
+                    <div class="stat-grid" style="margin-top:12px">
+                        <div class="stat-box"><div class="sv" style="color:var(--green)">68.1%</div><div class="sl">Win Rate</div></div>
+                        <div class="stat-box"><div class="sv" style="color:var(--blue)">1.35</div><div class="sl">Profit F</div></div>
+                        <div class="stat-box"><div class="sv" style="color:var(--red)">-4.2%</div><div class="sl">Max DD</div></div>
+                    </div>
+                </div>
+            </div>`;
+            setTimeout(drawFakeEquityCanvas, 100);
+        }
+        else if (TYPE === 'aivision') {
+            document.getElementById('content').outerHTML = `
+            <div id="content" style="flex:1;display:flex;flex-direction:column;min-height:300px">
+                <div class="card" style="flex:1;display:flex;flex-direction:column;">
+                    <div class="lbl">Neural Network Evaluation</div>
+                    <div id="ai-status" style="font-size:10.5px;color:var(--muted);margin-bottom:12px;line-height:1.4">Waiting for strategy signal to trigger ML evaluation...</div>
+                    <div id="ai-features" style="overflow-y:auto;flex:1;padding-right:4px;display:flex;flex-direction:column;gap:8px">
+                    </div>
+                    <div style="margin-top:14px;border-top:1px solid var(--g-border);padding-top:12px;display:flex;justify-content:space-between;align-items:center">
+                        <div style="font-size:11px;color:var(--text);font-weight:500;text-transform:uppercase;letter-spacing:0.05em">Win Probability</div>
+                        <div class="big-num" id="ai-prob" style="font-size:22px">--%</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+        else if (TYPE === 'scanner') {
+            document.getElementById('content').outerHTML = `
+            <div id="content" style="flex:1;display:flex;flex-direction:column;min-height:300px">
+                <div style="display:flex;gap:4px;margin-bottom:8px">
+                    <button class="tab-pill on" id="tab-hm" onclick="switchScanTab('heatmap')" style="flex:1">Heatmap</button>
+                    <button class="tab-pill" id="tab-scr" onclick="switchScanTab('screener')" style="flex:1">Screener</button>
+                </div>
+                
+                <!-- HEATMAP TAB -->
+                <div id="view-heatmap" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+                    <div class="card" style="margin-bottom:8px">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                            <select id="scan-sym" style="background:rgba(0,0,0,0.2);color:var(--text);border:1px solid var(--g-border);border-radius:6px;padding:4px 8px;font-family:var(--sans);font-weight:600;font-size:12px;outline:none">
+                                <option value="BTCUSDT">BTC/USDT</option>
+                                <option value="ETHUSDT">ETH/USDT</option>
+                                <option value="SOLUSDT">SOL/USDT</option>
+                            </select>
+                            <span id="scan-status" class="badge" style="background:rgba(255,255,255,0.06);color:var(--muted)">Connecting...</span>
+                        </div>
+                        
+                        <div class="lbl" style="margin-top:10px">Order Flow (Tape)</div>
+                        <div class="stat-grid" style="margin-top:6px">
+                            <div class="stat-box" style="padding:6px">
+                                <div class="sv" id="scan-delta" style="font-size:12px">0.0</div>
+                                <div class="sl">Delta</div>
+                            </div>
+                            <div class="stat-box" style="padding:6px">
+                                <div class="sv" id="scan-imb" style="font-size:12px">1.0x</div>
+                                <div class="sl">Imbalance</div>
+                            </div>
+                            <div class="stat-box" style="padding:6px">
+                                <div class="sv" id="scan-speed" style="font-size:12px">0 t/s</div>
+                                <div class="sl">Speed</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+                        <div class="lbl">Depth Heatmap (Walls)</div>
+                        <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px" id="hm-walls">
+                            <div class="empty">Waiting for WallTracker data...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SCREENER TAB -->
+                <div id="view-screener" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+                    <div class="card" style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:2px">
+                         <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px" id="scr-list">
+                             <div class="empty">Scanning global walls...</div>
+                         </div>
+                    </div>
+                </div>
+            </div>`;
+
+            // Setup WebSocket to Telemetry Server
+            const connectTelemetry = () => {
+                const ws = new WebSocket('ws://127.0.0.1:8081');
+                const status = document.getElementById('scan-status');
+                
+                ws.onopen = () => {
+                    if(status) {
+                        status.textContent = 'Live';
+                        status.className = 'badge badge-g';
+                    }
+                };
+                
+                ws.onclose = () => {
+                    if(status) {
+                        status.textContent = 'Offline';
+                        status.className = 'badge';
+                    }
+                    setTimeout(connectTelemetry, 2000); // Reconnect
+                };
+                
+                ws.onmessage = (e) => {
+                    try {
+                        const payload = JSON.parse(e.data);
+                        if(payload.type === 'telemetry_update') {
+                            
+                            // 1. Update Heatmap if active
+                            if (document.getElementById('scan-sym')) {
+                                const selectedSym = document.getElementById('scan-sym').value;
+                                const hData = payload.heatmap.find(d => d.symbol.replace('/','') === selectedSym.replace('/',''));
+                                if(hData) updateScanner(hData);
+                            }
+
+                            // 2. Update Screener
+                            if (payload.screener && document.getElementById('scr-list')) {
+                                updateScreener(payload.screener);
+                            }
+                        }
+                    } catch(err) {}
+                };
+            };
+            setTimeout(connectTelemetry, 1000);
+        }
+
+        // Global function to switch tabs via DOM
+        window.switchScanTab = function(tab) {
+            if(tab === 'heatmap') {
+                document.getElementById('view-heatmap').style.display = 'flex';
+                document.getElementById('view-screener').style.display = 'none';
+                document.getElementById('tab-hm').classList.add('on');
+                document.getElementById('tab-scr').classList.remove('on');
+            } else {
+                document.getElementById('view-heatmap').style.display = 'none';
+                document.getElementById('view-screener').style.display = 'flex';
+                document.getElementById('tab-hm').classList.remove('on');
+                document.getElementById('tab-scr').classList.add('on');
+            }
+        };
+
+        // Click handler to jump from Screener to a specific Heatmap coin
+        window.jumpToHeatmap = function(symbol) {
+            // Unify symbol format for the selector (remove slashes)
+            const cleanSym = symbol.replace('/', '');
+            
+            const sel = document.getElementById('scan-sym');
+            if(sel) {
+                // If it's not in the dropdown yet, maybe we should add it dynamically?
+                let exists = false;
+                for(let i=0; i < sel.options.length; i++){
+                    if(sel.options[i].value === cleanSym) exists = true;
+                }
+                if(!exists) {
+                    sel.insertAdjacentHTML('beforeend', `<option value="${cleanSym}">${symbol}</option>`);
+                }
+                sel.value = cleanSym;
+            }
+            switchScanTab('heatmap');
+        };
+
+        function updateScreener(walls) {
+            const list = document.getElementById('scr-list');
+            if(!list || document.getElementById('view-screener').style.display === 'none') return;
+            
+            if(walls.length === 0) {
+                list.innerHTML = '<div class="empty">No walls found</div>';
+                return;
+            }
+
+            let html = '';
+            walls.forEach(w => {
+                const isAsk = w.side === 'ASK';
+                const color = isAsk ? 'var(--red)' : 'var(--green)';
+                const bg = isAsk ? 'rgba(224,150,150,0.1)' : 'rgba(143,209,161,0.1)';
+                const wPct = w.eaten * 100;
+
+                html += `
+                <div class="pos-item" style="padding:6px 10px; margin-bottom:2px; cursor:pointer; border: 1px solid transparent; transition: border-color 0.2s" onmouseenter="this.style.borderColor='rgba(255,255,255,0.15)'" onmouseleave="this.style.borderColor='transparent'" onclick="jumpToHeatmap('${w.sym}')">
+                    <div class="pos-top" style="margin-bottom:4px">
+                        <div>
+                            <span class="pos-sym">${w.sym}</span> 
+                            <span class="badge ${isAsk?'badge-r':'badge-g'}" style="transform:scale(0.85); transform-origin:left; margin-left:2px">${w.side}</span>
+                        </div>
+                        <div style="font-family:var(--mono);font-size:11px;color:${color}">
+                            $${(w.size/1000).toFixed(0)}k <span style="font-size:9.5px;color:var(--muted)">| ${w.dist.toFixed(1)}% dst</span>
+                        </div>
+                    </div>
+                    
+                    <div style="display:flex; align-items:center; gap:8px">
+                        <!-- Tiny eating progress bar -->
+                        <div class="pos-bar" style="flex:1; margin-top:0; height:4px; background:rgba(0,0,0,0.3)">
+                            <div class="pos-fill" style="width:${wPct}%; background:${color}"></div>
+                        </div>
+                        
+                        <div style="font-size:9.5px;color:var(--muted);width:50px;text-align:right">
+                            ${Math.round(w.speed)} t/s
+                        </div>
+                    </div>
+                </div>`;
+            });
+            list.innerHTML = html;
+        }
+
+        function updateScanner(data) {
+            // Update Flow
+            const flow = data.flow;
+            const elDelta = document.getElementById('scan-delta');
+            const elImb = document.getElementById('scan-imb');
+            const elSpeed = document.getElementById('scan-speed');
+            
+            if(elDelta) {
+                elDelta.textContent = flow.delta > 0 ? '+' + flow.delta.toFixed(2) : flow.delta.toFixed(2);
+                elDelta.style.color = flow.delta > 0 ? 'var(--green)' : (flow.delta < 0 ? 'var(--red)' : 'var(--text)');
+            }
+            if(elImb) {
+                elImb.textContent = flow.imbalance.toFixed(1) + 'x';
+                elImb.style.color = flow.imbalance > 1.2 ? 'var(--green)' : (flow.imbalance < 0.8 ? 'var(--red)' : 'var(--text)');
+            }
+            if(elSpeed) {
+                elSpeed.textContent = Math.round(flow.speed) + ' t/s';
+                elSpeed.style.color = flow.accel > 1.2 ? 'var(--blue)' : 'var(--text)';
+            }
+            
+            // Update Walls
+            const container = document.getElementById('hm-walls');
+            if(!container) return;
+            
+            const walls = data.walls;
+            let html = '';
+            
+            // Asks (Resistance)
+            if(walls.ask && walls.ask.length > 0) {
+                // Sort by price DESC so highest price is at the top
+                const asks = [...walls.ask].sort((a,b) => b.p - a.p);
+                asks.forEach(w => {
+                    const eatenPct = w.e * 100;
+                    // Max width based on USD size (cap at say $500k for visual scale)
+                    const widthPct = Math.min(100, (w.s / 500000) * 100);
+                    // If highly eaten, make it semi-transparent
+                    const op = w.e > 0.6 ? 0.4 : 1.0;
+                    
+                    html += `
+                    <div style="position:relative;height:22px;border-radius:4px;overflow:hidden;background:rgba(255,255,255,0.03);opacity:${op}">
+                        <div style="position:absolute;top:0;right:0;bottom:0;width:${widthPct}%;background:rgba(224,150,150,0.15);border-left:1px solid rgba(224,150,150,0.4)"></div>
+                        <div style="position:absolute;top:0;left:0;bottom:0;width:${eatenPct}%;background:rgba(0,0,0,0.3)"></div>
+                        <div style="position:absolute;inset:0;display:flex;justify-content:space-between;align-items:center;padding:0 8px;font-family:var(--mono);font-size:10.5px">
+                            <span style="color:var(--red)">${w.p.toFixed(2)}</span>
+                            <span style="color:var(--muted)">$${(w.s/1000).toFixed(0)}k <span style="font-size:8px;opacity:0.6">(-${eatenPct.toFixed(0)}%)</span></span>
+                        </div>
+                    </div>`;
+                });
+            }
+            
+            // Bids (Support)
+            if(walls.bid && walls.bid.length > 0) {
+                // Sort by price DESC so highest price is at the top
+                const bids = [...walls.bid].sort((a,b) => b.p - a.p);
+                bids.forEach(w => {
+                    const eatenPct = w.e * 100;
+                    const widthPct = Math.min(100, (w.s / 500000) * 100);
+                    const op = w.e > 0.6 ? 0.4 : 1.0;
+                    
+                    html += `
+                    <div style="position:relative;height:22px;border-radius:4px;overflow:hidden;background:rgba(255,255,255,0.03);opacity:${op}">
+                        <div style="position:absolute;top:0;left:0;bottom:0;width:${widthPct}%;background:rgba(143,209,161,0.15);border-right:1px solid rgba(143,209,161,0.4)"></div>
+                        <div style="position:absolute;top:0;left:0;bottom:0;width:${eatenPct}%;background:rgba(0,0,0,0.3)"></div>
+                        <div style="position:absolute;inset:0;display:flex;justify-content:space-between;align-items:center;padding:0 8px;font-family:var(--mono);font-size:10.5px">
+                            <span style="color:var(--green)">${w.p.toFixed(2)}</span>
+                            <span style="color:var(--muted)">$${(w.s/1000).toFixed(0)}k <span style="font-size:8px;opacity:0.6">(-${eatenPct.toFixed(0)}%)</span></span>
+                        </div>
+                    </div>`;
+                });
+            }
+            
+            if(html === '') html = '<div class="empty">No dense walls near price</div>';
+            container.innerHTML = html;
+        }
+
+        function drawFakeEquityCanvas() {
+            const canvas = document.getElementById('eqChart');
+            if (!canvas) return;
+            // set actual pixel dimensions
+            canvas.width = canvas.offsetWidth * 2;
+            canvas.height = canvas.offsetHeight * 2;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(2, 2);
+            const w = canvas.width / 2;
+            const h = canvas.height / 2;
+
+            ctx.clearRect(0, 0, w, h);
+            const pts = [
+                { x: 0, y: h - 10 }, { x: w * 0.2, y: h - 20 }, { x: w * 0.35, y: h - 15 },
+                { x: w * 0.5, y: h - 35 }, { x: w * 0.65, y: h - 30 }, { x: w * 0.8, y: h - 55 }, { x: w, y: 10 }
+            ];
+
+            // gradient glow
+            const grad = ctx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, 'rgba(163, 194, 163, 0.4)'); // var(--accent)
+            grad.addColorStop(1, 'rgba(163, 194, 163, 0.0)');
+
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            pts.forEach(p => ctx.lineTo(p.x, p.y));
+            ctx.lineTo(w, h);
+            ctx.lineTo(0, h);
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            pts.forEach(p => ctx.lineTo(p.x, p.y));
+            ctx.strokeStyle = '#a3c2a3';
+            ctx.lineWidth = 2.5;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = '#a3c2a3';
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        function renderAIFeatures(prob, features) {
+            const status = document.getElementById('ai-status');
+            const container = document.getElementById('ai-features');
+            const probEl = document.getElementById('ai-prob');
+            if (!status || !container) return;
+
+            status.innerHTML = `Evaluating signal. Extracting <span style="color:var(--blue)">${Object.keys(features).length}</span> features...`;
+            container.innerHTML = '';
+
+            probEl.textContent = (prob * 100).toFixed(1) + '%';
+            probEl.style.color = prob > 0.55 ? 'var(--green)' : 'var(--red)';
+
+            // Normalize and determine feature impact (fake logic for visual UI display)
+            Object.entries(features).forEach(([k, v]) => {
+                let fill = 50;
+                let col = 'var(--blue)';
+                if (k.includes('rsi') || k.includes('stoch')) { fill = v; col = (v > 70 || v < 30) ? 'var(--red)' : 'var(--blue)'; }
+                else if (k.includes('hurst')) { fill = v * 100; col = v > 0.5 ? 'var(--green)' : 'var(--red)'; }
+                else if (k.includes('vol')) { fill = Math.min(100, v * 30); col = v > 1.5 ? 'var(--green)' : 'var(--blue)'; }
+                else { fill = Math.min(100, Math.abs(v) * 20 + 20); }
+
+                container.insertAdjacentHTML('beforeend', `
+                <div style="display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;justify-content:space-between;font-size:9.5px;font-family:var(--mono)">
+                        <span>${k.toUpperCase()}</span>
+                        <span style="color:${col}">${typeof v === 'number' ? v.toFixed(3) : v}</span>
+                    </div>
+                    <div class="pos-bar" style="margin-top:0"><div class="pos-fill" style="width:${fill}%;background:${col};box-shadow:0 0 6px ${col}"></div></div>
+                </div>`);
+            });
+        }
+
+
+        /* ── Receive live data from main window via IPC ──────────────── */
+        if (window.widget) {
+            window.widget.onData(payload => {
+                // Sync theme or opacity from main window
+                if (payload.theme) document.documentElement.setAttribute('data-theme', payload.theme);
+                if (payload.type === 'opacity') document.documentElement.style.setProperty('--g-op', payload.value);
+
+                if (TYPE === 'positions' && payload.type === 'positions') {
+                    renderPositions(payload.data);
+                } else if (TYPE === 'portfolio' && payload.type === 'balance_update') {
+                    const el = document.getElementById('pf-bal');
+                    if (el) el.textContent = '$' + parseFloat(payload.equity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                } else if (TYPE === 'logs' && payload.type === 'log') {
+                    let t = 'i';
+                    if (payload.level === 'error') t = 'r';
+                    else if (payload.message.includes('EXECUTE BUY')) t = 'g';
+                    else if (payload.message.includes('EXECUTE SELL')) t = 'r';
+                    else if (payload.message.includes('SIGNAL')) t = 'b';
+                    else if (payload.message.includes('REJECTED')) t = 's';
+                    addLog(t, payload.message);
+                } else if (TYPE === 'aivision' && payload.type === 'ml_eval') {
+                    renderAIFeatures(payload.prob, payload.features);
+                } else if (TYPE === 'logs' && payload.type === 'backend_log') {
+                    addLog('s', payload.message);
+                } else if (TYPE === 'journal') {
+                    if (payload.type === 'journal_init') {
+                        const jf = document.getElementById('jf');
+                        jf.innerHTML = '';
+                        if (!payload.data || payload.data.length === 0) {
+                            jf.innerHTML = '<div class="empty">No recorded trades</div>';
+                        } else {
+                            // Reverse to show newest on top
+                            payload.data.slice().reverse().forEach(j => {
+                                const isL = j.direction === 'LONG';
+                                jf.insertAdjacentHTML('beforeend', `
+                                <div class="pos-item" style="padding:6px 10px; margin-bottom:2px">
+                                  <div class="pos-top">
+                                    <div><span class="pos-sym">${j.symbol}</span> <span class="badge ${isL ? 'badge-g' : 'badge-r'}">${j.direction}</span></div>
+                                    <div style="font-family:var(--mono);font-size:11px">@ ${j.entry_price}</div>
+                                  </div>
+                                  <div style="font-size:9.5px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between">
+                                    <span>${j.strategy}</span>
+                                    <span>P(Win) ${(j.ml_prob * 100).toFixed(1)}%</span>
+                                  </div>
+                                </div>`);
+                            });
+                        }
+                    } else if (payload.type === 'log' && payload.message.includes('📝 JOURNAL')) {
+                        // Live append logic (hacky but works without refreshing the whole array)
+                        const jf = document.getElementById('jf');
+                        if (jf.querySelector('.empty')) jf.innerHTML = '';
+                        // Extract [BTC/USDT] 📝 JOURNAL: LONG @ 64000 (ML: 65.4%)
+                        const m = payload.message.match(/\[(.*?)\] 📝 JOURNAL: (LONG|SHORT) @ ([0-9.]+) \(ML: (.*?)\)/);
+                        if (m) {
+                            const isL = m[2] === 'LONG';
+                            jf.insertAdjacentHTML('afterbegin', `
+                            <div class="pos-item" style="padding:6px 10px; margin-bottom:2px; animation: bl 1s ease">
+                                <div class="pos-top">
+                                <div><span class="pos-sym">${m[1]}</span> <span class="badge ${isL ? 'badge-g' : 'badge-r'}">${m[2]}</span></div>
+                                <div style="font-family:var(--mono);font-size:11px">@ ${m[3]}</div>
+                                </div>
+                                <div style="font-size:9.5px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between">
+                                <span>Live Signal</span>
+                                <span>P(Win) ${m[4]}</span>
+                                </div>
+                            </div>`);
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

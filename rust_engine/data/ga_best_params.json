@@ -1,0 +1,21 @@
+{
+  "best_params": {
+    "adx_max": 40.0,
+    "confirm_green": 0.0,
+    "cooldown_bars": 15.0,
+    "cvd_window": 5.0,
+    "lookback": 45.0,
+    "max_drawdown_r": 7.0,
+    "max_trades_day": 3.0,
+    "min_divergence": 0.45,
+    "min_drop_atr": 4.0,
+    "rsi_filter": 35.0,
+    "sl_buffer_atr": 0.4,
+    "tp_rr": 3.0,
+    "vol_mult": 2.0
+  },
+  "fitness": 68.20857560316743,
+  "num_trades": 107,
+  "strategy": "knife",
+  "win_rate": 39.25233644859813
+}

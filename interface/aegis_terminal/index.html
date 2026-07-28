@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="mocha">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aegis Terminal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,200;0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,300&family=JetBrains+Mono:wght@300;400&display=swap"
+        rel="stylesheet">
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           DESIGN TOKENS — Reference: Spoon UI (muted glass over real BG)
+           ═══════════════════════════════════════════════════════════════ */
+        :root {
+            --sans: 'Inter', system-ui, sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+
+            /* Opacity for sliders */
+            --g-op: 0.52;
+
+            /* Glass material base RGBs */
+            --bg-rgb: 30 28 26;
+            --g-bg: rgb(var(--bg-rgb) / var(--g-op));
+            --g-border: rgba(255, 255, 255, 0.12);
+            --g-shine: rgba(255, 255, 255, 0.08);
+            --g-blur: blur(18px) saturate(120%);
+
+            /* Brightened Accent palette for better contrast */
+            --accent: #a3c2a3;
+            --blue: #a3c2e0;
+            --green: #8fd1a1;
+            --red: #e09696;
+            --amber: #e0be7e;
+            --text: rgba(255, 255, 255, 0.96);
+            --muted: rgba(255, 255, 255, 0.55);
+            --r: 16px;
+        }
+
+        /* ── Light themes (Pearl / Sand) adjust text to dark ──────── */
+        [data-theme="pearl"],
+        [data-theme="sand"] {
+            --g-border: rgba(0, 0, 0, 0.20);
+            --g-shine: rgba(255, 255, 255, 0.40);
+            --text: #0a0a0a;
+            --muted: #4e4e4e;
+            --accent: #2e5c36;
+            --blue: #2a4e70;
+            --green: #256b35;
+            --red: #8a3030;
+            --amber: #755a20;
+        }
+
+        [data-theme="pearl"] {
+            --bg-rgb: 245 242 238;
+        }
+
+        [data-theme="sand"] {
+            --bg-rgb: 210 195 175;
+        }
+
+        /* ── Reset / base ──────────────────────────────────────────── */
+        html,
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: transparent;
+            font-family: var(--sans);
+            font-size: 12px;
+            color: var(--text);
+            -webkit-app-region: no-drag;
+            user-select: none;
+        }
+
+        /* ── Utility ───────────────────────────────────────────────── */
+        .glass {
+            background: var(--g-bg);
+            border: 1px solid var(--g-border);
+            backdrop-filter: var(--g-blur);
+            -webkit-backdrop-filter: var(--g-blur);
+            border-radius: var(--r);
+        }
+
+        .glass::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: linear-gradient(150deg, var(--g-shine) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           LAYOUT — Shell
+           ══════════════════════════════════════════════════════════════ */
+        #shell {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Titlebar ──────────────────────────────────────────────── */
+        #titlebar {
+            pointer-events: auto;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            padding: 0 14px;
+            gap: 10px;
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.01);
+            -webkit-app-region: drag;
+        }
+
+        .tl-dots {
+            display: flex;
+            gap: 6px;
+            -webkit-app-region: no-drag;
+        }
+
+        .dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: filter .15s;
+        }
+
+        .dot:hover {
+            filter: brightness(1.3);
+        }
+
+        .dot.r {
+            background: #ff5f57;
+            box-shadow: 0 0 5px rgba(255, 95, 87, .4);
+        }
+
+        .dot.y {
+            background: #ffbd2e;
+            box-shadow: 0 0 5px rgba(255, 189, 46, .35);
+        }
+
+        .dot.g {
+            background: #28c840;
+            box-shadow: 0 0 5px rgba(40, 200, 64, .35);
+        }
+
+        #tb-title {
+            flex: 1;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            -webkit-app-region: drag;
+        }
+
+        #tb-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--muted);
+            -webkit-app-region: no-drag;
+        }
+
+        .blink-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: bl 2.5s ease infinite;
+        }
+
+        @keyframes bl {
+
+            0%,
+            100% {
+                opacity: 1;
+                box-shadow: 0 0 4px var(--green);
+            }
+
+            50% {
+                opacity: .25;
+                box-shadow: none;
+            }
+        }
+
+        /* ── Desktop canvas ────────────────────────────────────────── */
+        #desktop {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           CENTRAL MONOLITH  (Chart  +  Strategies column)
+           Non-draggable, always visible, fills the screen
+           ══════════════════════════════════════════════════════════════ */
+        #monolith {
+            pointer-events: auto;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            bottom: 68px;
+            display: grid;
+            grid-template-columns: 1fr 244px;
+            gap: 8px;
+        }
+
+        .mono-pane {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Chart pane: pure glass */
+        #pane-chart {
+            border-radius: var(--r);
+            background: var(--g-bg);
+            border: 1px solid var(--g-border);
+            backdrop-filter: var(--g-blur);
+            -webkit-backdrop-filter: var(--g-blur);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Right strategies pane: same glass */
+        #pane-strat {
+            border-radius: var(--r);
+            background: var(--g-bg);
+            border: 1px solid var(--g-border);
+            backdrop-filter: var(--g-blur);
+            -webkit-backdrop-filter: var(--g-blur);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.20);
+            overflow: hidden;
+        }
+
+        /* ── Chart top bar ─────────────────────────────────────────── */
+        #chart-topbar {
+            height: 40px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 8px;
+            border-bottom: 1px solid var(--g-border);
+        }
+
+        /* Pill tabs — like "LAQ · MONOLITH · MIST" from the reference */
+        .tab-row {
+            display: flex;
+            gap: 4px;
+        }
+
+        .tab-pill {
+            padding: 3px 12px;
+            border-radius: 100px;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--muted);
+            font-family: var(--sans);
+            font-size: 10.5px;
+            font-weight: 500;
+            letter-spacing: .04em;
+            cursor: pointer;
+            transition: all .18s;
+        }
+
+        .tab-pill.on {
+            background: rgba(255, 255, 255, 0.10);
+            border-color: var(--g-border);
+            color: var(--text);
+        }
+
+        .tab-pill:hover:not(.on) {
+            color: var(--text);
+        }
+
+        #equity-val {
+            margin-left: auto;
+            font-family: var(--mono);
+            font-size: 16px;
+            font-weight: 300;
+            letter-spacing: -.02em;
+        }
+
+        /* Chart body — TradingView fills this */
+        #chart-body {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #chart-ov {
+            position: absolute;
+            top: 8px;
+            left: 10px;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* ── Strategies right pane ─────────────────────────────────── */
+        .pane-title {
+            height: 38px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            padding: 0 14px;
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--muted);
+            border-bottom: 1px solid var(--g-border);
+        }
+
+        .pane-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 10px 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .pane-body::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .pane-body::-webkit-scrollbar-thumb {
+            background: var(--g-border);
+            border-radius: 4px;
+        }
+
+        /* Cards inside panes */
+        .card {
+            position: relative;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--g-border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 8%;
+            right: 8%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .10), transparent);
+            pointer-events: none;
+        }
+
+        .lbl {
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: .09em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        /* Controls inside strat pane */
+        .btn-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .btn {
+            border: none;
+            cursor: pointer;
+            border-radius: 8px;
+            font-family: var(--sans);
+            font-size: 11px;
+            font-weight: 500;
+            padding: 7px 14px;
+            transition: filter .15s;
+        }
+
+        .btn:hover {
+            filter: brightness(1.15);
+        }
+
+        .btn-go {
+            flex: 1;
+            background: rgba(122, 190, 130, 0.20);
+            border: 1px solid rgba(122, 190, 130, 0.30);
+            color: var(--green);
+        }
+
+        .btn-s {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--g-border);
+            color: var(--muted);
+            width: 32px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-stop {
+            width: 100%;
+            background: rgba(196, 128, 128, 0.18);
+            border: 1px solid rgba(196, 128, 128, 0.28);
+            color: var(--red);
+        }
+
+        /* Kill zone / strategy rows */
+        .row-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+            font-size: 11px;
+        }
+
+        .row-item:last-child {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 8px;
+            border-radius: 100px;
+            font-size: 9.5px;
+            font-weight: 500;
+        }
+
+        .badge-g {
+            background: rgba(124, 174, 136, .18);
+            color: var(--green);
+            border: 1px solid rgba(124, 174, 136, .25);
+        }
+
+        .badge-a {
+            background: rgba(196, 164, 106, .15);
+            color: var(--amber);
+            border: 1px solid rgba(196, 164, 106, .22);
+        }
+
+        .strat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 11px;
+        }
+
+        .strat-item:last-child {
+            border: none;
+        }
+
+        .strat-ico {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .strat-name {
+            font-weight: 500;
+            line-height: 1.2;
+        }
+
+        .strat-sub {
+            font-size: 9.5px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        .strat-pct {
+            margin-left: auto;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--green);
+        }
+
+        /* Risk slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 3px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.12);
+            margin-top: 6px;
+            cursor: pointer;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 6px rgba(154, 175, 154, .4);
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           FLOATING WINDOWS  (Portfolio | Positions | Logs)
+           ══════════════════════════════════════════════════════════════ */
+        .gwin {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            background: var(--g-bg);
+            border: 1px solid var(--g-border);
+            border-radius: var(--r);
+            backdrop-filter: var(--g-blur);
+            -webkit-backdrop-filter: var(--g-blur);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, .28);
+            overflow: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(.96) translateY(6px);
+            transition: opacity .2s, transform .2s;
+        }
+
+        .gwin.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1) translateY(0);
+        }
+
+        .gwin.focus {
+            box-shadow: 0 24px 60px rgba(0, 0, 0, .38);
+        }
+
+        .gwin-title {
+            height: 36px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            padding: 0 13px;
+            gap: 6px;
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--muted);
+            border-bottom: 1px solid var(--g-border);
+            cursor: grab;
+        }
+
+        .gwin-title:active {
+            cursor: grabbing;
+        }
+
+        .gwin-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .gwin-body::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .gwin-body::-webkit-scrollbar-thumb {
+            background: var(--g-border);
+            border-radius: 4px;
+        }
+
+        /* Window default sizes / positions */
+        #win-portfolio {
+            width: 272px;
+            min-height: 300px;
+            top: 10px;
+            right: 270px;
+        }
+
+        #win-pos {
+            width: 260px;
+            min-height: 220px;
+            top: 10px;
+            right: 0;
+        }
+
+        #win-log {
+            width: 480px;
+            height: 230px;
+            bottom: 74px;
+            left: 50%;
+            transform: translateX(-50%) translateY(0) !important;
+        }
+
+        #win-log.active {
+            transform: translateX(-50%) !important;
+        }
+
+        /* Big balance number */
+        .big-num {
+            font-family: var(--mono);
+            font-size: 24px;
+            font-weight: 200;
+            letter-spacing: -.03em;
+            line-height: 1;
+        }
+
+        .delta {
+            font-size: 11px;
+            color: var(--green);
+            margin-top: 4px;
+        }
+
+        /* Stats grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--g-border);
+            border-radius: 10px;
+            padding: 7px 8px;
+            text-align: center;
+        }
+
+        .sv {
+            font-size: 13px;
+            font-weight: 500;
+            font-family: var(--mono);
+        }
+
+        .sl {
+            font-size: 8.5px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            margin-top: 2px;
+        }
+
+        /* Log feed */
+        #lf {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .lr {
+            display: flex;
+            gap: 8px;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .lt {
+            color: var(--muted);
+            flex-shrink: 0;
+        }
+
+        .li {
+            flex: 1;
+            word-break: break-all;
+        }
+
+        .li-g {
+            color: var(--green);
+        }
+
+        .li-r {
+            color: var(--red);
+        }
+
+        .li-b {
+            color: var(--blue);
+        }
+
+        .li-s {
+            color: var(--muted);
+        }
+
+        /* Positions */
+        .pos-item {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--g-border);
+            border-radius: 10px;
+            padding: 8px 10px;
+        }
+
+        .pos-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .pos-sym {
+            font-weight: 600;
+            font-size: 11.5px;
+        }
+
+        .pos-pnl {
+            font-family: var(--mono);
+            font-size: 11px;
+        }
+
+        .pos-bar {
+            height: 2px;
+            background: var(--g-border);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .pos-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           DOCK  (bottom floating pill)
+           ══════════════════════════════════════════════════════════════ */
+        #dock {
+            pointer-events: auto;
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 16px;
+            background: var(--g-bg);
+            border: 1px solid var(--g-border);
+            backdrop-filter: var(--g-blur);
+            -webkit-backdrop-filter: var(--g-blur);
+            border-radius: 100px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, .25);
+            z-index: 9999;
+        }
+
+        .di {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            background: transparent;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all .18s cubic-bezier(.34, 1.56, .64, 1);
+            position: relative;
+        }
+
+        .di:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-4px) scale(1.08);
+            border-color: var(--g-border);
+        }
+
+        .di.on::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        .di-sep {
+            width: 1px;
+            height: 22px;
+            background: var(--g-border);
+            margin: 0 2px;
+        }
+
+        .di-tooltip {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 18, 16, 0.75);
+            backdrop-filter: blur(8px);
+            color: rgba(230, 225, 218, .9);
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-size: 10px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .15s;
+        }
+
+        .di:hover .di-tooltip {
+            opacity: 1;
+        }
+
+        /* Theme pill indicator */
+        .theme-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1.5px solid transparent;
+            cursor: pointer;
+            transition: all .15s;
+            flex-shrink: 0;
+        }
+
+        .theme-dot.on,
+        .theme-dot:hover {
+            border-color: var(--text);
+            transform: scale(1.3);
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           STATUS BAR
+           ══════════════════════════════════════════════════════════════ */
+        /* (hidden — moved info to dock area, saves space) */
+
+        /* ══════════════════════════════════════════════════════════════
+           MODAL (Settings)
+           ══════════════════════════════════════════════════════════════ */
+        #settingsModal {
+            pointer-events: auto;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .2s;
+        }
+
+        #settingsModal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background: var(--g-bg);
+            border: 1px solid var(--g-border);
+            border-radius: 18px;
+            padding: 22px 20px;
+            width: 300px;
+            box-shadow: 0 20px 48px rgba(0, 0, 0, .45);
+            transform: translateY(18px);
+            transition: transform .22s cubic-bezier(.175, .885, .32, 1.275);
+        }
+
+        #settingsModal.active .modal-box {
+            transform: translateY(0);
+        }
+
+        .modal-box h3 {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            font-size: 9.5px;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .form-group input {
+            background: rgba(0, 0, 0, 0.18);
+            border: 1px solid var(--g-border);
+            padding: 7px 10px;
+            border-radius: 8px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 11px;
+            outline: none;
+        }
+
+        .form-group input:focus {
+            border-color: rgba(154, 175, 154, .5);
+        }
+
+        .modal-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .btn-modal {
+            flex: 1;
+            padding: 8px;
+            border-radius: 9px;
+            border: none;
+            font-family: var(--sans);
+            font-size: 11.5px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: filter .15s;
+        }
+
+        .btn-modal:hover {
+            filter: brightness(1.15);
+        }
+
+        .btn-cancel {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--muted);
+            border: 1px solid var(--g-border);
+        }
+
+        .btn-save {
+            background: rgba(122, 190, 130, 0.22);
+            color: var(--green);
+            border: 1px solid rgba(122, 190, 130, .28);
+        }
+
+        /* Reconnection Overlay */
+        #recon-ov {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            z-index: 100000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 15px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s;
+        }
+
+        #recon-ov.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .recon-box {
+            background: var(--g-bg);
+            border: 1px solid var(--g-border);
+            padding: 24px 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 2px solid var(--g-border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="shell">
+
+        <!-- ── Titlebar ─────────────────────────────────────────────── -->
+        <div id="titlebar">
+            <div class="tl-dots">
+                <div class="dot r" onclick="window.aegis?.close()"></div>
+                <div class="dot y" onclick="window.aegis?.minimize()"></div>
+                <div class="dot g" onclick="window.aegis?.maximize()"></div>
+            </div>
+            <div id="tb-title">Aegis Terminal · ICT AutoCore</div>
+            <div id="tb-right">
+                <div class="blink-dot"></div>
+                <span>Binance Futures</span>
+                <span id="clk" style="opacity:.4"></span>
+            </div>
+        </div>
+
+        <!-- ── Desktop ───────────────────────────────────────────────── -->
+        <div id="desktop">
+
+            <!-- ════════════════════════════════════════════════════
+             CENTRAL MONOLITH — Chart (left) + Strategy (right)
+             ════════════════════════════════════════════════════ -->
+            <div id="monolith">
+
+                <!-- LEFT: CHART -->
+                <div class="mono-pane" id="pane-chart">
+                    <div id="chart-topbar">
+                        <div class="tab-row" id="chart-tabs">
+                            <!-- Populated dynamically by JS based on active_config.json -->
+                            <button class="tab-pill on">Waiting for Engine...</button>
+                        </div>
+                        <span id="chart-tf"
+                            style="margin-left:14px; font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)">5m</span>
+                        <div id="equity-val" style="color:var(--text)">$--</div>
+                    </div>
+                    <div id="chart-body" style="flex: 1 1 100%; position: relative; min-height: 200px;">
+                        <div class="tradingview-widget-container" style="position: absolute; inset: 0; z-index: 1;">
+                            <div id="tv_chart"
+                                style="height:100%;width:100%;background:rgba(20,20,20,0.8);border-radius:var(--r)">
+                            </div>
+                        </div>
+                        <div id="chart-ov"
+                            style="position: absolute; top: 8px; left: 10px; z-index: 2; pointer-events: none;">
+                            <span id="ws-ind"
+                                style="font-size:10px; color:var(--muted); text-shadow: 0 1px 4px rgba(0,0,0,0.8);">↑
+                                System Ready</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: STRATEGIES + CONTROLS -->
+                <div class="mono-pane" id="pane-strat">
+                    <div class="pane-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3" />
+                            <path
+                                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                        </svg> Core Engine</div>
+                    <div class="pane-body">
+
+                        <div class="card">
+                            <div class="lbl">Engines</div>
+                            <!-- Main Engine (SMC, ORB, etc) -->
+                            <div class="row-item" style="border:none; padding-bottom:4px;">
+                                <span style="font-weight:600; font-size:10px; color:var(--text)">Aegis Core Engine
+                                    (Rust)</span>
+                                <span id="main-status" class="badge"
+                                    style="background:rgba(255,255,255,0.06); color:var(--muted)">Offline</span>
+                            </div>
+                            <div class="btn-row">
+                                <button class="btn btn-go" id="sb" onclick="toggleBot()"><svg width="12" height="12"
+                                        viewBox="0 0 24 24" fill="currentColor">
+                                        <polygon points="5 3 19 12 5 21 5 3" />
+                                    </svg> Start Main</button>
+                                <button class="btn btn-s" onclick="openSettings()"><svg width="14" height="14"
+                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="3" />
+                                        <path
+                                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                    </svg></button>
+                            </div>
+
+                            <!-- Arbitrage Engine -->
+                            <div class="row-item"
+                                style="border:none; padding-bottom:4px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.06);">
+                                <span style="font-weight:600; font-size:10px; color:var(--text)">Arbitrage Engine
+                                    (Pairs)</span>
+                                <span id="arb-status" class="badge"
+                                    style="background:rgba(255,255,255,0.06); color:var(--muted)">Offline</span>
+                            </div>
+                            <div class="btn-row">
+                                <button class="btn btn-go" id="btn-arb" onclick="toggleArb()"
+                                    style="background:rgba(122, 190, 190, 0.20); border-color:rgba(122, 190, 190, 0.30); color:#7abebe;"><svg
+                                        width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                        <polygon points="5 3 19 12 5 21 5 3" />
+                                    </svg> Start Arb</button>
+                            </div>
+
+                            <button class="btn btn-stop" onclick="emergencyClose()" style="margin-top:6px;"><svg
+                                    width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                                </svg> Emergency Close All</button>
+                        </div>
+
+                        <div class="card">
+                            <div class="lbl">Capital Limits (USDT)</div>
+
+                            <div class="row-item" style="border:none; padding-bottom:4px;">
+                                <span style="color:var(--muted);font-size:11px">Main Engine Size</span>
+                                <input type="number" id="tradeAmtMain" value="1000"
+                                    style="width:60px; background:rgba(0,0,0,0.2); border:1px solid var(--g-border); color:var(--text); font-family:var(--mono); font-size:11px; text-align:right; border-radius:4px; padding:2px 4px;"
+                                    onchange="localStorage.setItem('main_trade_amt', this.value)">
+                            </div>
+
+                            <div class="row-item" style="border:none; padding-bottom:4px; padding-top:4px;">
+                                <span style="color:var(--muted);font-size:11px">Arb Engine Size</span>
+                                <input type="number" id="tradeAmtArb" value="2000"
+                                    style="width:60px; background:rgba(0,0,0,0.2); border:1px solid var(--g-border); color:var(--text); font-family:var(--mono); font-size:11px; text-align:right; border-radius:4px; padding:2px 4px;"
+                                    onchange="localStorage.setItem('arb_trade_amt', this.value)">
+                            </div>
+
+                            <div class="row-item"
+                                style="border:none; padding-bottom:2px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.06);">
+                                <span style="color:var(--muted);font-size:11px">Max Leverage</span>
+                                <input type="number" id="maxLev" value="10"
+                                    style="width:60px; background:rgba(0,0,0,0.2); border:1px solid var(--g-border); color:var(--text); font-family:var(--mono); font-size:11px; text-align:right; border-radius:4px; padding:2px 4px;"
+                                    onchange="localStorage.setItem('max_leverage', this.value)">
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="lbl">Kill Zones</div>
+                            <div class="row-item">
+                                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <path
+                                            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                                        <path d="M2 12h20" />
+                                    </svg> London Open</span>
+                                <span class="badge badge-g">● Active</span>
+                            </div>
+                            <div class="row-item">
+                                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                        <line x1="3" y1="9" x2="21" y2="9" />
+                                        <line x1="3" y1="15" x2="21" y2="15" />
+                                        <line x1="9" y1="3" x2="9" y2="21" />
+                                    </svg> New York</span>
+                                <span class="badge badge-a">Upcoming</span>
+                            </div>
+                        </div>
+
+                        <!-- NEW AUTO-PILOT CARD -->
+                        <div class="card">
+                            <div class="lbl">System Auto-Pilot</div>
+                            <div class="row-item" style="border:none; padding-bottom:2px">
+                                <span id="ap-state" style="font-size:10px; font-weight:600; color:var(--muted)">Next
+                                    Update in: <span id="ap-timer" style="color:var(--text)">47h 59m</span></span>
+                                <span id="ap-pct"
+                                    style="font-family:var(--mono); font-size:10px; color:var(--text); opacity:0">0%</span>
+                            </div>
+                            <div
+                                style="height:4px; background:rgba(255,255,255,0.08); border-radius:4px; margin-top:4px; overflow:hidden; position:relative;">
+                                <div id="ap-bar"
+                                    style="position:absolute; top:0; left:0; bottom:0; width:100%; background:rgba(255,255,255,0.15); transition: width 0.3s ease, background 0.3s ease;">
+                                </div>
+                            </div>
+                            <div id="ap-sub"
+                                style="font-size:9px; color:var(--muted); margin-top:6px; letter-spacing:0.04em">
+                                Awaiting trigger...</div>
+                        </div>
+
+                        <div class="card">
+                            <div class="lbl">Models</div>
+                            <div id="models-list">
+                                <div style="font-size:11px;color:var(--muted);text-align:center;padding:10px 0">Waiting
+                                    for Engine...</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div><!-- end #monolith -->
+
+            <!-- ════════════════════════════════════════════════════
+             FLOATING WINDOWS
+             ════════════════════════════════════════════════════ -->
+
+            <!-- Portfolio & Balance -->
+            <div class="gwin" id="win-portfolio">
+                <div class="gwin-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <path d="M3 9h18" />
+                        <path d="M9 21V9" />
+                    </svg> &nbsp;Portfolio & Balance</div>
+                <div class="gwin-body">
+                    <div class="card" style="padding:12px">
+                        <div class="lbl">Balance</div>
+                        <div class="big-num">$12,847</div>
+                        <div class="delta">+$342.18 &nbsp;+2.74%</div>
+                        <div class="stat-grid">
+                            <div class="stat-box">
+                                <div class="sv" id="stat-wr" style="color:var(--green)">--%</div>
+                                <div class="sl">Win Rate</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="sv" id="stat-pf" style="color:var(--blue)">--</div>
+                                <div class="sl">Profit F</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="sv" id="stat-tr">--</div>
+                                <div class="sl">Trades</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Positions -->
+            <div class="gwin" id="win-pos">
+                <div class="gwin-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                    </svg> &nbsp;Live Positions</div>
+                <div class="gwin-body">
+                    <div id="pos-container">
+                        <div class="lbl">Open Positions</div>
+                        <div id="no-pos" style="font-size:11px;color:var(--muted);text-align:center;padding:14px 0">No
+                            active positions</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Directional Logs -->
+            <div class="gwin" id="win-log">
+                <div class="gwin-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2" />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg> &nbsp;Directional AI Logs</div>
+                <div class="gwin-body" style="display:block;overflow:hidden;">
+                    <div id="lf"
+                        style="max-height:160px;overflow-y:auto; font-family:var(--mono); font-size:10.5px; display:flex; flex-direction:column; gap:2px;">
+                        <div class="lr"><span class="lt">SYSTEM</span><span class="li">Waiting for Main Engine
+                                boot...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Arbitration Logs -->
+            <div class="gwin" id="win-arblog">
+                <div class="gwin-title" style="color:#7abebe"><svg width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2" />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg> &nbsp;Arbitration Engine Logs</div>
+                <div class="gwin-body" style="display:block;overflow:hidden;">
+                    <div id="alf"
+                        style="max-height:160px;overflow-y:auto; font-family:var(--mono); font-size:10.5px; display:flex; flex-direction:column; gap:2px;">
+                        <div class="lr"><span class="lt">SYSTEM</span><span class="li">Waiting for Arb Engine
+                                boot...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════════════════════════════════════════════════════
+             DOCK
+             ════════════════════════════════════════════════════ -->
+            <div id="dock">
+                <!-- Toggle tools -->
+                <div class="di on" id="di-portfolio" onclick="dockToggle('portfolio',this)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <path d="M3 9h18" />
+                        <path d="M9 21V9" />
+                    </svg>
+                    <div class="di-tooltip">Portfolio</div>
+                </div>
+                <div class="di" id="di-pos" onclick="dockToggle('positions',this)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <div class="di-tooltip">Positions</div>
+                </div>
+                <div class="di" id="di-log" onclick="dockToggle('logs',this)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2" />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                    <div class="di-tooltip">AI Logs</div>
+                </div>
+                <div class="di" id="di-arblog" onclick="dockToggle('arblog',this)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    <div class="di-tooltip">Arb Logs</div>
+                </div>
+                <div class="di" id="di-jou" onclick="dockToggle('journal',this)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
+                    <div class="di-tooltip">Journal</div>
+                </div>
+                <div class="di" id="di-analytics" onclick="dockToggle('analytics',this)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    <div class="di-tooltip">Analytics</div>
+                </div>
+                <div class="di" id="di-scanner" onclick="dockToggle('scanner',this)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="20" x2="12" y2="10" />
+                        <line x1="18" y1="20" x2="18" y2="4" />
+                        <line x1="6" y1="20" x2="6" y2="16" />
+                    </svg>
+                    <div class="di-tooltip">Scanner</div>
+                </div>
+                <div class="di" id="di-aivision" onclick="dockToggle('aivision',this)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    <div class="di-tooltip" style="width: 60px; margin-left: -30px;">AI Brain</div>
+                </div>
+                <div class="di-sep"></div>
+                <div class="di" onclick="openSettings()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <div class="di-tooltip">Settings</div>
+                </div>
+                <div class="di-sep"></div>
+                <!-- Theme dots -->
+                <div class="theme-dot on" style="background:#e8e4de" id="td-pearl" title="Pearl"
+                    onclick="applyTheme('pearl')"></div>
+                <div class="theme-dot" style="background:#c09878" id="td-sand" title="Sand"
+                    onclick="applyTheme('sand')"></div>
+                <div class="theme-dot" style="background:#241810" id="td-mocha" title="Mocha"
+                    onclick="applyTheme('mocha')"></div>
+            </div>
+
+        </div><!-- end #desktop -->
+    </div><!-- end #shell -->
+
+    <!-- Reconnection Overlay -->
+    <div id="recon-ov">
+        <div class="recon-box">
+            <div class="spinner"></div>
+            <div style="font-size:14px; font-weight:500; color:var(--text)">Bridge Connection Lost</div>
+            <div style="font-size:11px; color:var(--muted); margin-top:5px">Retrying AutoCore link...</div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal">
+        <div class="modal-box" style="width: 380px;">
+            <h3>API Configurations</h3>
+
+            <div class="form-group" style="flex-direction:row;align-items:center;justify-content:space-between">
+                <label style="margin-bottom:0; color:var(--text)">Main Engine: Paper Mode</label>
+                <input type="checkbox" id="mainPaperCheck" style="width:auto">
+            </div>
+            <div class="form-group">
+                <label>Main API Key</label>
+                <input type="password" id="apiKeyInp" placeholder="Paste Main API Key...">
+            </div>
+            <div class="form-group">
+                <label>Main API Secret</label>
+                <input type="password" id="apiSecretInp" placeholder="Paste Main Secret...">
+            </div>
+
+            <div style="height:1px; background:var(--g-border); margin:12px 0;"></div>
+
+            <div class="form-group" style="flex-direction:row;align-items:center;justify-content:space-between">
+                <label style="margin-bottom:0; color:var(--text)">Arbitrage Engine: Paper Mode</label>
+                <input type="checkbox" id="arbPaperCheck" style="width:auto">
+            </div>
+            <div class="form-group">
+                <label>Arb API Key</label>
+                <input type="password" id="arbApiKeyInp" placeholder="Paste Arb API Key...">
+            </div>
+            <div class="form-group">
+                <label>Arb API Secret</label>
+                <input type="password" id="arbApiSecretInp" placeholder="Paste Arb Secret...">
+            </div>
+
+            <div style="height:1px; background:var(--g-border); margin:12px 0;"></div>
+
+            <div class="form-group">
+                <label>Glass Opacity</label>
+                <div class="row-item" style="border:none; padding:4px 0">
+                    <input type="range" id="opa" min="0.1" max="1" step="0.02" value="0.52" style="flex:1"
+                        oninput="setOp(this.value, false)">
+                    <span id="opa-v"
+                        style="font-family:var(--mono); margin-left:10px; width:30px; text-align:right">52%</span>
+                </div>
+            </div>
+            <div class="modal-row">
+                <button class="btn-modal btn-cancel" onclick="closeSettings()">Cancel</button>
+                <button class="btn-modal btn-save" onclick="saveSettings()">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        /* == Dock widget toggles (open/close real OS windows) == */
+        const dockState = {};
+        function dockToggle(type, iconEl) {
+            dockState[type] = !dockState[type];
+            iconEl.classList.toggle('on', dockState[type]);
+            if (window.aegis) {
+                window.aegis.toggleWidget(type);
+                // Hydrate new widget with current state
+                if (dockState[type]) {
+                    setTimeout(() => {
+                        window.aegis.forwardToWidgets({ type: 'balance_update', equity: lastEquity });
+                        window.aegis.forwardToWidgets({ type: 'positions', data: lastPositions });
+                        window.aegis.forwardToWidgets({ type: 'journal_init', data: journalBuffer });
+                        logBuffer.forEach(log => window.aegis.forwardToWidgets(log));
+                    }, 500);
+                }
+            }
+        }
+
+        // Sync dock icon when a widget window is closed by its own X button
+        if (window.aegis) {
+            window.aegis.onWidgetClosed((type) => {
+                dockState[type] = false;
+                const icon = document.getElementById('di-' + (type === 'positions' ? 'pos' : type.substring(0, 3)));
+                if (icon) icon.classList.remove('on');
+            });
+        }
+
+        /* ── Clock ──────────────────────────────────────────────────── */
+        const clk = () => {
+            const n = new Date();
+            document.getElementById('clk').textContent = n.toISOString().slice(11, 19) + ' UTC';
+        };
+        clk(); setInterval(clk, 1000);
+
+        /* ── Opacity ────────────────────────────────────────────────── */
+        let currOp = localStorage.getItem('aegis-opacity') || '0.52';
+        function setOp(val, init) {
+            currOp = val;
+            document.documentElement.style.setProperty('--g-op', val);
+            const ov = document.getElementById('opa-v');
+            if (ov) ov.textContent = Math.round(val * 100) + '%';
+            const oInp = document.getElementById('opa');
+            if (oInp) oInp.value = val;
+
+            if (!init) {
+                localStorage.setItem('aegis-opacity', val);
+                if (window.aegis) window.aegis.forwardToWidgets({ type: 'opacity', value: val });
+            }
+        }
+        setOp(currOp, true);
+
+        function applyTheme(name) {
+            document.documentElement.setAttribute('data-theme', name);
+            document.querySelectorAll('.theme-dot').forEach(d => d.classList.remove('on'));
+            const dot = document.getElementById('td-' + name);
+            if (dot) dot.classList.add('on');
+            localStorage.setItem('aegis-theme', name);
+            if (window.aegis) window.aegis.forwardToWidgets({ type: 'theme', theme: name });
+        }
+        applyTheme(localStorage.getItem('aegis-theme') || 'mocha');
+
+        /* ── Chart tab switch ────────────────────────────────────────── */
+        function swt(el, symStr) {
+            document.querySelectorAll('.tab-pill').forEach(t => t.classList.remove('on'));
+            el.classList.add('on');
+
+            // Re-render TradingView widget
+            const tvEl = document.getElementById('tv_chart');
+            if (tvEl) tvEl.innerHTML = '';
+
+            // Binance spot/futures suffix logic
+            let tvSym = symStr;
+            if (!tvSym.includes(':')) {
+                tvSym = 'BINANCE:' + symStr + '.P'; // default to perp
+            }
+
+            new TradingView.widget({
+                autosize: true, symbol: tvSym, interval: '5',
+                timezone: 'Etc/UTC', theme: 'dark', style: '1', locale: 'en',
+                enable_publishing: false,
+                backgroundColor: 'rgba(0,0,0,0)',
+                gridColor: 'rgba(255,255,255,0.04)',
+                hide_top_toolbar: true, hide_legend: true, save_image: false,
+                container_id: 'tv_chart'
+            });
+        }
+
+        let chartsInitialized = false;
+        function updateCharts(symbols) {
+            if (chartsInitialized || !symbols || symbols.length === 0) return;
+            const tabRow = document.getElementById('chart-tabs');
+            if (!tabRow) return;
+
+            tabRow.innerHTML = ''; // clear waiting
+            symbols.forEach((sym, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'tab-pill' + (idx === 0 ? ' on' : '');
+                btn.textContent = sym;
+                btn.onclick = function () { swt(this, sym); };
+                tabRow.appendChild(btn);
+            });
+            chartsInitialized = true;
+            swt(tabRow.children[0], symbols[0]); // load first
+        }
+
+        /* ── Settings modal ─────────────────────────────────────────── */
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('active');
+
+            document.getElementById('apiKeyInp').value = localStorage.getItem('binance_api_key') || '';
+            document.getElementById('apiSecretInp').value = localStorage.getItem('binance_api_secret') || '';
+            document.getElementById('mainPaperCheck').checked = localStorage.getItem('main_paper_mode') !== 'false';
+
+            document.getElementById('arbApiKeyInp').value = localStorage.getItem('arb_api_key') || '';
+            document.getElementById('arbApiSecretInp').value = localStorage.getItem('arb_api_secret') || '';
+            document.getElementById('arbPaperCheck').checked = localStorage.getItem('arb_paper_mode') !== 'false';
+
+            setOp(currOp, true);
+        }
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+        function saveSettings() {
+            const k = document.getElementById('apiKeyInp').value.trim();
+            const s = document.getElementById('apiSecretInp').value.trim();
+            const pmMain = document.getElementById('mainPaperCheck').checked;
+
+            const arbK = document.getElementById('arbApiKeyInp').value.trim();
+            const arbS = document.getElementById('arbApiSecretInp').value.trim();
+            const pmArb = document.getElementById('arbPaperCheck').checked;
+
+            localStorage.setItem('binance_api_key', k);
+            localStorage.setItem('binance_api_secret', s);
+            localStorage.setItem('main_paper_mode', pmMain);
+
+            localStorage.setItem('arb_api_key', arbK);
+            localStorage.setItem('arb_api_secret', arbS);
+            localStorage.setItem('arb_paper_mode', pmArb);
+
+            // Just sync testnet setting to false
+            localStorage.setItem('binance_testnet', 'false');
+
+            closeSettings();
+            addLog('g', '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15..."></path></svg> Global Settings saved.');
+        }
+
+        // On Load, hydrate capital limits card
+        window.addEventListener('DOMContentLoaded', () => {
+            const tm = localStorage.getItem('main_trade_amt'); if (tm) document.getElementById('tradeAmtMain').value = tm;
+            const am = localStorage.getItem('arb_trade_amt'); if (am) document.getElementById('tradeAmtArb').value = am;
+            const ml = localStorage.getItem('max_leverage'); if (ml) document.getElementById('maxLev').value = ml;
+        });
+
+        /* ── Bot control ─────────────────────────────────────────────── */
+        let running = false, ws = null;
+        let arbRunning = false;
+
+        function toggleBot() {
+            running = !running;
+            const b = document.getElementById('sb');
+            const stat = document.getElementById('main-status');
+            if (running) {
+                b.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg> Stop Main';
+                b.style.cssText = 'background:rgba(196,128,128,.2);border:1px solid rgba(196,128,128,.28);color:var(--red);';
+                stat.textContent = 'Active';
+                stat.style.color = 'var(--green)';
+                addLog('i', '● Booting Aegis Core Engine (Rust)...');
+                if (window.aegis) {
+                    window.aegis.startEngine({
+                        paperMode: localStorage.getItem('main_paper_mode') !== 'false',
+                        tradeAmount: localStorage.getItem('main_trade_amt') || "1000",
+                        maxLev: localStorage.getItem('max_leverage') || "10",
+                        apiKey: localStorage.getItem('binance_api_key') || "",
+                        apiSecret: localStorage.getItem('binance_api_secret') || ""
+                    });
+                }
+                connectWS();
+            } else {
+                b.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start Main';
+                b.style.cssText = '';
+                stat.textContent = 'Offline';
+                stat.style.color = 'var(--muted)';
+                addLog('i', '○ Sending shutdown signal to Rust Core...');
+                if (window.aegis) window.aegis.stopEngine();
+                if (!arbRunning && ws) ws.close(); // only close ws if both are off
+            }
+        }
+
+        function toggleArb() {
+            arbRunning = !arbRunning;
+            const b = document.getElementById('btn-arb');
+            const stat = document.getElementById('arb-status');
+            if (arbRunning) {
+                b.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg> Stop Arb';
+                b.style.cssText = 'background:rgba(196,128,128,.2);border:1px solid rgba(196,128,128,.28);color:var(--red);';
+                stat.textContent = 'Active';
+                stat.style.color = 'var(--green)';
+                addLog('i', '● Booting Statistical Arbitrage Core...', true);
+                if (window.aegis && window.aegis.startArbEngine) {
+                    window.aegis.startArbEngine({
+                        paperMode: localStorage.getItem('arb_paper_mode') !== 'false',
+                        tradeAmount: localStorage.getItem('arb_trade_amt') || "2000",
+                        maxLev: localStorage.getItem('max_leverage') || "10",
+                        apiKey: localStorage.getItem('arb_api_key') || "",
+                        apiSecret: localStorage.getItem('arb_api_secret') || ""
+                    });
+                }
+            } else {
+                b.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start Arb';
+                b.style.cssText = 'background:rgba(122, 190, 190, 0.20); border-color:rgba(122, 190, 190, 0.30); color:#7abebe;';
+                stat.textContent = 'Offline';
+                stat.style.color = 'var(--muted)';
+                addLog('i', '○ Terminating Arbitrage Core...', true);
+                if (window.aegis && window.aegis.stopArbEngine) window.aegis.stopArbEngine();
+            }
+        }
+
+        function emergencyClose() {
+            addLog('r', '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> EMERGENCY CLOSE ALL POSITIONS');
+            addLog('r', 'EMERGENCY CLOSE ALL ARB POSITIONS', true);
+            if (ws && ws.readyState === WebSocket.OPEN)
+                ws.send(JSON.stringify({ action: 'emergency_close' }));
+        }
+
+        /* ── Log helper ─────────────────────────────────────────────── */
+        function addLog(type, msg, isArb = false) {
+            const lf = document.getElementById(isArb ? 'alf' : 'lf');
+            if (!lf) return;
+            const ts = new Date().toISOString().slice(11, 19);
+            const cls = { g: 'li-g', r: 'li-r', b: 'li-b', s: 'li-s' }[type] || '';
+            const row = document.createElement('div');
+            row.className = 'lr';
+            row.innerHTML = `<span class="lt">${ts}</span><span class="li ${cls}">${msg}</span>`;
+            lf.appendChild(row);
+            lf.scrollTop = lf.scrollHeight;
+            if (lf.children.length > 400) lf.removeChild(lf.children[0]);
+        }
+
+        /* ── Backend log via IPC ─────────────────────────────────────── */
+        const logBuffer = [];
+        const journalBuffer = [];
+        let lastEquity = 0;
+        let lastPositions = [];
+
+        if (window.aegis) {
+            window.aegis.onBackendLog(logText => {
+                logText.split('\n').forEach(line => {
+                    const c = line.trim();
+                    if (!c) return;
+                    let t = 'i';
+                    if (c.includes(' - ERROR - ') || c.startsWith('Traceback') || c.match(/File ".*", line \d+/)) t = 'r';
+                    else if (c.includes('EXECUTE BUY')) t = 'g';
+                    else if (c.includes('EXECUTE SELL')) t = 'r';
+                    else if (c.includes('SIGNAL')) t = 'b';
+                    else if (c.includes('HTTP/1.1" 200')) return; // suppress Telegram OK
+
+                    addLog(t, c);
+                    logBuffer.push({ type: 'log', message: c, level: t === 'r' ? 'error' : 'info' });
+                    if (logBuffer.length > 100) logBuffer.shift();
+
+                    if (window.aegis) window.aegis.forwardToWidgets({ type: 'backend_log', message: c });
+                });
+            });
+        }
+
+        /* ── Robust Reconnecting WebSocket Bridge ───────────────────── */
+        class ReconnectingWebSocket {
+            constructor(url) {
+                this.url = url;
+                this.ws = null;
+                this.reconnectAttempts = 0;
+                this.maxDelay = 30000;
+                this.heartbeatInterval = 5000;
+                this.heartbeatTimeout = 30000; // Increased to 30s to be more tolerant
+                this.pingTimer = null;
+                this.pongTimer = null;
+                this.connect();
+            }
+
+            connect() {
+                if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) return;
+
+                console.log(`[Aegis] Connecting to ${this.url}...`);
+                this.ws = new WebSocket(this.url);
+
+                this.ws.onopen = () => {
+                    console.info('[Aegis] Bridge Established.');
+                    this.reconnectAttempts = 0;
+                    document.getElementById('ws-ind').textContent = '↑ Engine Connected';
+                    document.getElementById('recon-ov').classList.remove('active');
+                    this.startHeartbeat();
+
+                    const k = localStorage.getItem('binance_api_key') || '';
+                    const s = localStorage.getItem('binance_api_secret') || '';
+                    const t = localStorage.getItem('binance_testnet') === 'true';
+                    if (k) this.send({ action: 'update_credentials', apiKey: k, apiSecret: s, testnet: t });
+                };
+
+                this.ws.onclose = (e) => {
+                    console.warn(`[Aegis] Bridge Closed: ${e.code}. Retrying...`);
+                    this.stopHeartbeat();
+                    document.getElementById('ws-ind').textContent = '○ WS Disconnected';
+                    document.getElementById('recon-ov').classList.add('active');
+                    this.reconnect();
+                };
+
+                this.ws.onerror = (err) => {
+                    console.error('[Aegis] Bridge Error:', err);
+                };
+
+                this.ws.onmessage = (event) => {
+                    this.resetHeartbeat();
+                    const data = JSON.parse(event.data);
+                    this.handleMessage(data);
+                };
+            }
+
+            reconnect() {
+                if (!running) return;
+                const delay = Math.min(1000 * Math.pow(1.5, this.reconnectAttempts), this.maxDelay);
+                console.log(`[Aegis] Reconnecting in ${(delay / 1000).toFixed(1)}s...`);
+                setTimeout(() => {
+                    this.reconnectAttempts++;
+                    this.connect();
+                }, delay);
+            }
+
+            send(data) {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify(data));
+                }
+            }
+
+            startHeartbeat() {
+                this.pingTimer = setInterval(() => {
+                    this.send({ action: 'ping' });
+                }, this.heartbeatInterval);
+
+                this.pongTimer = setTimeout(() => {
+                    console.error('[Aegis] Heartbeat lost. Forcing reconnect.');
+                    if (this.ws) this.ws.close();
+                }, this.heartbeatTimeout);
+            }
+
+            stopHeartbeat() {
+                clearInterval(this.pingTimer);
+                clearTimeout(this.pongTimer);
+            }
+
+            resetHeartbeat() {
+                clearTimeout(this.pongTimer);
+                this.pongTimer = setTimeout(() => {
+                    console.error('[Aegis] Heartbeat lost. Forcing reconnect.');
+                    if (this.ws) this.ws.close();
+                }, this.heartbeatTimeout);
+            }
+
+            handleMessage(data) {
+                if (data.type === 'log') {
+                    if (window.aegis) window.aegis.forwardToWidgets(data);
+                    let t = 'i';
+                    if (data.level === 'error') t = 'r';
+                    else if (data.message.includes('EXECUTE BUY')) t = 'g';
+                    else if (data.message.includes('EXECUTE SELL')) t = 'r';
+                    else if (data.message.includes('SIGNAL')) t = 'b';
+                    else if (data.message.includes('REJECTED')) t = 's';
+                    addLog(t, data.message);
+                } else if (data.type === 'arb_log') {
+                    // special type sent by arb_executor
+                    let t = 'i';
+                    if (data.level === 'error') t = 'r';
+                    else if (data.message.includes('ARB LONG') || data.message.includes('PROFIT')) t = 'g';
+                    else if (data.message.includes('ARB SHORT')) t = 'r';
+                    else if (data.message.includes('HEDGE')) t = 'b';
+                    addLog(t, data.message, true); // true = route to alf
+                } else if (data.type === 'log_buffer') {
+                    data.data.forEach(log => {
+                        let t = 'i';
+                        if (log.level === 'error' || log.level === 'r') t = 'r';
+                        else if (log.message.includes('EXECUTE')) t = 'b';
+                        addLog(t, log.message);
+                    });
+                } else if (data.type === 'active_symbols') {
+                    updateCharts(data.symbols);
+                } else if (data.type === 'active_configs') {
+                    const listEl = document.getElementById('models-list');
+                    if (listEl) {
+                        listEl.innerHTML = '';
+                        data.data.forEach(c => {
+                            const wr = ((c.metrics || {}).win_rate || 0) * 100;
+                            let svg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>';
+                            if (c.strategy.includes('ORB')) svg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+                            else if (c.strategy.includes('Swing')) svg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l2-9 5 18 3-9h6"/></svg>';
+
+                            const div = document.createElement('div');
+                            div.className = 'strat-item';
+                            div.innerHTML = `
+                                <span class="strat-ico">${svg}</span>
+                                <div>
+                                    <div class="strat-name">${c.strategy.replace(/_/g, ' ')} (${c.symbol.replace('/USDT', '')})</div>
+                                    <div class="strat-sub">${c.timeframe} · AI Filter</div>
+                                </div>
+                                <span class="strat-pct" style="color:${wr >= 55 ? 'var(--green)' : 'var(--muted)'}">${wr.toFixed(1)}%</span>
+                            `;
+                            listEl.appendChild(div);
+                        });
+
+                        if (data.data.length === 0) {
+                            listEl.innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px 0">No Active Strategies</div>';
+                        }
+                    }
+                } else if (data.type === 'pipeline_status') {
+                    // {"status": "countdown", "hours_left": 47.5}
+                    // {"status": "updating", "progress": 45, "step": "WFA Filtration"}
+                    const timeEl = document.getElementById('ap-timer');
+                    const textEl = document.getElementById('ap-state');
+                    const pctEl = document.getElementById('ap-pct');
+                    const barEl = document.getElementById('ap-bar');
+                    const subEl = document.getElementById('ap-sub');
+
+                    if (data.status === 'countdown') {
+                        let h = Math.floor(data.hours_left);
+                        let m = Math.floor((data.hours_left - h) * 60);
+                        textEl.innerHTML = `Next Update in: <span id="ap-timer" style="color:${data.hours_left <= 1 ? 'var(--red)' : 'var(--text)'}">${h}h ${m}m</span>`;
+                        pctEl.style.opacity = 0;
+                        barEl.style.width = '100%';
+                        barEl.style.background = 'rgba(255,255,255,0.05)';
+                        subEl.textContent = 'Awaiting pipeline trigger...';
+                    } else if (data.status === 'updating') {
+                        textEl.innerHTML = `<span style="color:var(--accent)">SYSTEM UPDATING...</span>`;
+                        pctEl.style.opacity = 1;
+                        pctEl.textContent = `${data.progress}%`;
+                        barEl.style.width = `${data.progress}%`;
+                        barEl.style.background = 'var(--accent)';
+                        subEl.textContent = `Running: ${data.step}`;
+                    }
+                } else if (data.type === 'signal') {
+                    addLog('b', `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> ${data.direction} ${data.symbol} @ ${data.price}`);
+                } else if (data.type === 'ml_eval') {
+                    const p = (data.prob * 100).toFixed(1) + '%';
+                    addLog(data.prob >= 0.63 ? 'g' : 's', `🧠 ML (${data.symbol}): P(Win)=${p}`);
+                } else if (data.type === 'journal_init') {
+                    journalBuffer.push(...data.data);
+                    if (journalBuffer.length > 50) journalBuffer.splice(0, journalBuffer.length - 50);
+                    if (window.aegis) window.aegis.forwardToWidgets(data);
+                } else if (data.type === 'positions') {
+                    lastPositions = data.data;
+                    renderPositions(data.data);
+                } else if (data.type === 'balance_update') {
+                    lastEquity = data.equity;
+                    if (window.aegis) window.aegis.forwardToWidgets(data);
+                    const el = document.getElementById('equity-val');
+                    if (el) el.textContent = '$' + parseFloat(data.equity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                } else if (data.type === 'analytics_update') {
+                    const wrEl = document.getElementById('stat-wr');
+                    const pfEl = document.getElementById('stat-pf');
+                    const trEl = document.getElementById('stat-tr');
+                    if (wrEl) {
+                        wrEl.textContent = data.win_rate.toFixed(1) + '%';
+                        wrEl.style.color = data.win_rate >= 50 ? 'var(--green)' : 'var(--red)';
+                    }
+                    if (pfEl) pfEl.textContent = data.profit_factor.toFixed(2);
+                    if (trEl) trEl.textContent = data.trades;
+                }
+            }
+        }
+
+        function connectWS() {
+            if (!ws) {
+                // Force 127.0.0.1 to avoid Windows IPv6 resolution latency issues
+                ws = new ReconnectingWebSocket('ws://127.0.0.1:8080');
+            } else {
+                ws.connect();
+            }
+        }
+
+        /* ── Render open positions ──────────────────────────────────── */
+        function renderPositions(positions) {
+            const c = document.getElementById('pos-container');
+            if (!c) return;
+            c.innerHTML = '<div class="lbl">Open Positions</div>';
+            if (!positions || positions.length === 0) {
+                c.innerHTML += '<div id="no-pos" style="font-size:11px;color:var(--muted);text-align:center;padding:14px 0">No active positions</div>';
+                return;
+            }
+            positions.forEach(p => {
+                const isL = p.side === 'LONG';
+                const pnlSign = p.unrealizedPnl >= 0 ? '+' : '';
+                const pnlColor = p.unrealizedPnl >= 0 ? 'var(--green)' : 'var(--red)';
+                const bw = Math.min(100, Math.max(5, Math.abs(p.pnlPct) * 20));
+                const bg = isL ? 'linear-gradient(90deg,#22c55e,#84cc16)' : 'linear-gradient(90deg,#ef4444,#f97316)';
+                c.insertAdjacentHTML('beforeend', `
+              <div class="pos-item">
+                <div class="pos-top">
+                  <div><span class="pos-sym">${p.symbol}</span>
+                    <span class="badge ${isL ? 'badge-g' : 'badge-a'}" style="margin-left:5px;font-size:8.5px">${p.side}</span>
+                    <div style="font-size:9.5px;color:var(--muted);margin-top:2px">Entry $${parseFloat(p.entryPrice).toFixed(2)}</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="pos-pnl" style="color:${pnlColor}">${pnlSign}$${p.unrealizedPnl.toFixed(2)}</div>
+                    <div style="font-size:9.5px;color:var(--muted)">${pnlSign}${p.pnlPct.toFixed(2)}%</div>
+                  </div>
+                </div>
+                <div class="pos-bar"><div class="pos-bar-fill" style="width:${bw}%;background:${bg}"></div></div>
+              </div>`);
+            });
+        }
+    </script>
+</body>
+
+</html>

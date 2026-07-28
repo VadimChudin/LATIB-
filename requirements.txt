@@ -1,0 +1,13 @@
+ccxt>=4.2.0
+pandas>=2.0.0
+numpy>=1.24.0
+pandas-ta
+python-telegram-bot>=20.0
+python-dotenv>=1.0.0
+aiohttp
+websockets
+pydantic
+joblib
+scikit-learn
+xgboost
+lightgbm

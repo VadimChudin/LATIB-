@@ -1,0 +1,13 @@
+{
+    "name": "aegis-terminal",
+    "version": "2.1.0",
+    "description": "ICT AutoCore Trading Terminal",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "dev": "electron . --dev"
+    },
+    "devDependencies": {
+        "electron": "^30.5.1"
+    }
+}

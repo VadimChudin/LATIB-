@@ -1,0 +1,15 @@
+{
+  "total": 100,
+  "correct_entries": 81,
+  "wrong_entries": 15,
+  "correct_skips": 2,
+  "missed_opportunities": 2,
+  "total_reward": 0.8096597790718079,
+  "actions": {
+    "0": 0,
+    "1": 46,
+    "2": 50,
+    "3": 4
+  },
+  "label_accuracy": {}
+}

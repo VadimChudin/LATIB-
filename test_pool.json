@@ -1,0 +1,26 @@
+[
+  {
+    "best_params": {
+      "vol_spike_mult": 2.0,
+      "min_touches": 4.0,
+      "shakeout_pct": 0.01,
+      "tp_rr": 1.5,
+      "sl_atr_mult": 1.0,
+      "cooldown_bars": 25.0,
+      "max_trades_day": 18.0,
+      "max_drawdown_r": 6.0
+    }
+  },
+  {
+    "best_params": {
+      "vol_spike_mult": 3.0,
+      "min_touches": 2.0,
+      "shakeout_pct": 0.02,
+      "tp_rr": 2.0,
+      "sl_atr_mult": 1.2,
+      "cooldown_bars": 10.0,
+      "max_trades_day": 5.0,
+      "max_drawdown_r": 4.0
+    }
+  }
+]

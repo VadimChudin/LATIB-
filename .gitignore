@@ -1,13 +1,39 @@
+# ── Secrets ──────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
 
-# Node.js
+# ── Node.js ──────────────────────────────────────────────
 node_modules/
 package-lock.json
-# Electron / ���������
-*.exe
-dist/
-build/
 
+# ── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
 
-.env
-.env.local
+# ── Rust ─────────────────────────────────────────────────
+rust_engine/target/
+rust_engine/debug/
 
+# ── Data / models / cache (heavy, not for git) ───────────
+data/cache/
+data/ticks/
+data/epicenters_ticks/
+data/models/
+data/models_json/
+data/ga_results/
+*.db
+*.sqlite
+
+# ── Logs / debug ─────────────────────────────────────────
+*.log
+logs/
+debug/
